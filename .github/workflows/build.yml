@@ -11,9 +11,9 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Install Theos & ldid Tool
+    - name: Install Theos & Tools
       run: |
-        brew install ldid
+        brew install ldid dos2unix
         git clone --recursive https://github.com/theos/theos.git ~/theos
         echo "THEOS=~/theos" >> $GITHUB_ENV
 
@@ -62,12 +62,12 @@ jobs:
                         os.rename(old_path, new_path)
         "
 
-    - name: Clean Duplicates, Fix Syntax & Generate Plist
+    - name: Clean Duplicates, Fix Syntax, Plist & Line Endings
       run: |
         python3 -c "
         import os
 
-        # Duplicate source cleanup
+        # Clean duplicate sources
         seen_files = set()
         for root, dirs, files in os.walk('.'):
             if any(p in root for p in ['.git', '.theos', 'packages', 'sdks-master']):
@@ -82,7 +82,6 @@ jobs:
                     else:
                         seen_files.add(lower_name)
 
-        # Stub autofire if present
         if os.path.exists('autofire.mm'):
             with open('autofire.mm', 'w') as af:
                 af.write('#import <Foundation/Foundation.h>\nvoid autoFireStub() {}\n')
@@ -91,6 +90,9 @@ jobs:
         # C++17 typeof conversion
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/typeof(self)/__typeof__(self)/g' {} +
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/__weak typeof/__weak __typeof__/g' {} +
+
+        # Fix Windows line endings for Debian packaging files
+        find . -type f \( -name "control" -o -name "Makefile" -o -name "*.plist" \) -exec dos2unix {} +
 
         # Generate target bundle filter plist
         cat << 'EOF' > OsirisDrawESP.plist
@@ -105,6 +107,7 @@ jobs:
             };
         }
         EOF
+        dos2unix OsirisDrawESP.plist
 
     - name: Compile Tweak Package
       run: |
