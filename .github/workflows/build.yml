@@ -26,7 +26,7 @@ jobs:
 
     - name: Unzip Project Files
       run: |
-        unzip -q Drawdylib.zip -d ./project_extracted
+        python3 -c "import zipfile; zipfile.ZipFile('Drawdylib.zip').extractall('./project_extracted')"
         if [ -d "./project_extracted/Drawdylib" ]; then
           cp -R ./project_extracted/Drawdylib/* .
         else
