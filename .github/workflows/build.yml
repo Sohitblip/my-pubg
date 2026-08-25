@@ -24,15 +24,31 @@ jobs:
         cp -R sdks-master/* ~/theos/sdks/
         rm -rf master.zip sdks-master
 
-    - name: Unzip Project Files
+    - name: Unzip and Flatten Project Files
       run: |
-        python3 -c "import zipfile; zipfile.ZipFile('Drawdylib.zip').extractall('./project_extracted')"
-        if [ -d "./project_extracted/Drawdylib" ]; then
-          cp -R ./project_extracted/Drawdylib/* .
-        else
-          cp -R ./project_extracted/* .
-        fi
-        rm -rf ./project_extracted
+        python3 -c "
+        import zipfile, os, shutil
+        
+        with zipfile.ZipFile('Drawdylib.zip', 'r') as zip_ref:
+            zip_ref.extractall('temp_extract')
+        
+        src_dir = 'temp_extract'
+        if os.path.exists('temp_extract/Drawdylib'):
+            src_dir = 'temp_extract/Drawdylib'
+            
+        for item in os.listdir(src_dir):
+            s = os.path.join(src_dir, item)
+            d = os.path.join('.', item)
+            if os.path.exists(d):
+                if os.path.isdir(d):
+                    shutil.rmtree(d)
+                else:
+                    os.remove(d)
+            shutil.move(s, d)
+            
+        shutil.rmtree('temp_extract')
+        "
+        ls -la
 
     - name: Compile Tweak Package
       run: |
@@ -43,4 +59,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: OsirisDrawESP-Build
-        path: packages/*.deb
+        path: |
+          packages/*.deb
+          **/*.deb
