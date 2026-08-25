@@ -78,21 +78,26 @@ jobs:
           fi
         done
 
-        # autofire.mm ke compilation errors ko bypass karne ke liye safe stub inject karna
+        # autofire stub
         if [ -f "autofire.mm" ]; then
           echo "// Auto-generated safe dummy by CI" > autofire.mm
           echo "#import <Foundation/Foundation.h>" >> autofire.mm
           echo "void autoFireStub() {}" >> autofire.mm
         fi
 
-    - name: Compile Tweak Package
+    - name: Compile Tweak Package with All Sources
       run: |
         export THEOS=~/theos
         
+        # Include directories collect karna
         INC_DIRS=$(find . -maxdepth 4 -type d ! -path '*/.*' ! -path './theos*' ! -path './packages*' | sed 's/^/-I/' | tr '\n' ' ')
-        echo "Include Dirs: $INC_DIRS"
+        
+        # Project ki saari source files (.m, .mm, .cpp) collect karna
+        ALL_SOURCES=$(find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.cpp" \) ! -path '*/.*' ! -path './theos*' ! -path './packages*' | tr '\n' ' ')
+        echo "Found Sources: $ALL_SOURCES"
 
         make package FINALPACKAGE=1 \
+          OsirisDrawESP_FILES="$ALL_SOURCES" \
           ADDITIONAL_CFLAGS="-fobjc-arc -w $INC_DIRS" \
           ADDITIONAL_CCFLAGS="-std=c++17 -stdlib=libc++ -Wno-c++11-extensions -Wno-everything $INC_DIRS"
 
