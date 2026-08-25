@@ -46,18 +46,16 @@ jobs:
                     os.remove(d)
             shutil.move(s, d)
             
+        # Automatically fix filename casing for Theos compilation
+        for root, dirs, files in os.walk('.'):
+            for f in files:
+                if f.lower() == 'drawim.mm':
+                    os.rename(os.path.join(root, f), os.path.join(root, 'Drawim.mm'))
+                elif f.lower() == 'drawim.h':
+                    os.rename(os.path.join(root, f), os.path.join(root, 'Drawim.h'))
+                    
         shutil.rmtree('temp_extract')
         "
-
-    - name: Fix Filename Case Sensitivity
-      run: |
-        # Agar file Drawim.mm hai to use DrawIm.mm me rename karega
-        if [ -f "Drawim.mm" ] && [ ! -f "DrawIm.mm" ]; then
-          mv Drawim.mm DrawIm.mm
-        fi
-        if [ -f "Drawim.h" ] && [ ! -f "DrawIm.h" ]; then
-          mv Drawim.h DrawIm.h
-        fi
 
     - name: Compile Tweak Package
       run: |
