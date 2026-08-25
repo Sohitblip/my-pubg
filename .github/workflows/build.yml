@@ -5,24 +5,25 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-13
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install Theos Framework & Dependencies
       run: |
         export THEOS=~/theos
-        bash -c "$(curl -fsSL https://githubusercontent.com)"
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
         echo "THEOS=~/theos" >> $GITHUB_ENV
         
     - name: Setup iOS SDK
       run: |
         mkdir -p ~/theos/sdks
-        curl -LO https://github.com
-        tar -xf iPhoneOS14.5.sdk.tar.xz -C ~/theos/sdks/
-        rm iPhoneOS14.5.sdk.tar.xz
+        curl -LO https://github.com/theos/sdks/archive/refs/heads/master.zip
+        unzip -q master.zip
+        mv sdks-master/* ~/theos/sdks/
+        rm -rf master.zip sdks-master
 
     - name: Unzip Project Files
       run: |
@@ -39,7 +40,7 @@ jobs:
         make package FINALPACKAGE=1
 
     - name: Upload Compiled Artifact (.deb / .dylib)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: OsirisDrawESP-Build
         path: packages/*.deb
