@@ -1,4 +1,4 @@
-name: Build iOS Tweak
+name: Build iOS Dylib
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ jobs:
 
     - name: Install Theos & Tools
       run: |
-        brew install ldid dos2unix
+        brew install ldid
         git clone --recursive https://github.com/theos/theos.git ~/theos
         echo "THEOS=~/theos" >> $GITHUB_ENV
 
@@ -62,12 +62,11 @@ jobs:
                         os.rename(old_path, new_path)
         "
 
-    - name: Clean Duplicates, Fix Syntax, Plist & Line Endings
+    - name: Clean Duplicates & Fix Code
       run: |
         python3 -c "
         import os
 
-        # Clean duplicate sources
         seen_files = set()
         for root, dirs, files in os.walk('.'):
             if any(p in root for p in ['.git', '.theos', 'packages', 'sdks-master']):
@@ -87,29 +86,15 @@ jobs:
                 af.write('#import <Foundation/Foundation.h>\nvoid autoFireStub() {}\n')
         "
 
-        # C++17 typeof conversion
+        # Fix C++17 typeof
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/typeof(self)/__typeof__(self)/g' {} +
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/__weak typeof/__weak __typeof__/g' {} +
 
-        # Fix Windows line endings for Debian packaging files
-        find . -type f \( -name "control" -o -name "Makefile" -o -name "*.plist" \) -exec dos2unix {} +
+        # Fix AddConvexPolyFilled argument mismatch (3 -> 5 arguments)
+        find . -type f \( -name "*.m" -o -name "*.mm" \) -exec sed -i '' 's/AddConvexPolyFilled(vec, 3 , \[self getImU32/AddConvexPolyFilled(vec, 3, vec, 3, \[self getImU32/g' {} +
+        find . -type f \( -name "*.m" -o -name "*.mm" \) -exec sed -i '' 's/AddConvexPolyFilled(vec, 3, \[self getImU32/AddConvexPolyFilled(vec, 3, vec, 3, \[self getImU32/g' {} +
 
-        # Generate target bundle filter plist
-        cat << 'EOF' > OsirisDrawESP.plist
-        {
-            Filter = {
-                Bundles = (
-                    "com.tencent.ig",
-                    "com.pubg.krmobile",
-                    "com.vng.pubgmobile",
-                    "com.rexx.pubgmobile"
-                );
-            };
-        }
-        EOF
-        dos2unix OsirisDrawESP.plist
-
-    - name: Compile Tweak Package
+    - name: Compile Dylib Only
       run: |
         export THEOS=~/theos
         
@@ -125,16 +110,16 @@ jobs:
           ! -path './Hosts*' | tr '\n' ' ')
         echo "Final Sources to Compile: $SOURCES"
 
-        make package FINALPACKAGE=1 \
+        make FINALPACKAGE=1 \
           OsirisDrawESP_FILES="$SOURCES" \
           ADDITIONAL_CFLAGS="-fobjc-arc -w -Wno-everything $INC_DIRS" \
           ADDITIONAL_CCFLAGS="-std=c++17 -stdlib=libc++ -Wno-c++11-extensions -Wno-everything $INC_DIRS"
 
-    - name: Upload Compiled Artifact (.deb / .dylib)
+        mkdir -p ./output
+        find .theos -type f -name "*.dylib" -exec cp {} ./output/ \;
+
+    - name: Upload Compiled Dylib
       uses: actions/upload-artifact@v4
       with:
-        name: OsirisDrawESP-Build
-        path: |
-          packages/*.deb
-          **/*.deb
-          **/*.dylib
+        name: OsirisDrawESP-Dylib
+        path: ./output/*.dylib
