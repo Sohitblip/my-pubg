@@ -48,7 +48,16 @@ jobs:
             
         shutil.rmtree('temp_extract')
         "
-        ls -la
+
+    - name: Fix Filename Case Sensitivity
+      run: |
+        # Agar file Drawim.mm hai to use DrawIm.mm me rename karega
+        if [ -f "Drawim.mm" ] && [ ! -f "DrawIm.mm" ]; then
+          mv Drawim.mm DrawIm.mm
+        fi
+        if [ -f "Drawim.h" ] && [ ! -f "DrawIm.h" ]; then
+          mv Drawim.h DrawIm.h
+        fi
 
     - name: Compile Tweak Package
       run: |
