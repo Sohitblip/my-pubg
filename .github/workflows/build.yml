@@ -24,46 +24,75 @@ jobs:
         cp -R sdks-master/* ~/theos/sdks/
         rm -rf master.zip sdks-master
 
-    - name: Auto Extract and Flatten Zip
+    - name: Extract, Flatten and Sanitize Names
       run: |
         python3 -c "
         import zipfile, os, shutil
 
-        with zipfile.ZipFile('Drawdylib.zip', 'r') as zip_ref:
-            zip_ref.extractall('extracted_temp')
+        # 1. Extract zip to temporary directory
+        if os.path.exists('Drawdylib.zip'):
+            with zipfile.ZipFile('Drawdylib.zip', 'r') as zip_ref:
+                zip_ref.extractall('extracted_temp')
 
-        target_dir = 'extracted_temp'
-        for root, dirs, files in os.walk('extracted_temp'):
-            for f in files:
-                if f.lower() == 'makefile':
-                    target_dir = root
-                    break
+            # Find root folder containing Makefile
+            target_dir = 'extracted_temp'
+            for root, dirs, files in os.walk('extracted_temp'):
+                for f in files:
+                    if f.lower() == 'makefile':
+                        target_dir = root
+                        break
 
-        for item in os.listdir(target_dir):
-            s = os.path.join(target_dir, item)
-            d = os.path.join('.', item)
-            if os.path.exists(d):
-                if os.path.isdir(d):
-                    shutil.rmtree(d)
-                else:
-                    os.remove(d)
-            shutil.move(s, d)
+            # Move all extracted items to workspace root
+            for item in os.listdir(target_dir):
+                s = os.path.join(target_dir, item)
+                d = os.path.join('.', item)
+                if os.path.exists(d):
+                    if os.path.isdir(d):
+                        shutil.rmtree(d)
+                    else:
+                        os.remove(d)
+                shutil.move(s, d)
 
-        shutil.rmtree('extracted_temp', ignore_errors=True)
+            shutil.rmtree('extracted_temp', ignore_errors=True)
+
+        # 2. Rename folders containing spaces to avoid Clang arg-split issues
+        for root, dirs, files in os.walk('.', topdown=False):
+            for name in dirs:
+                if ' ' in name:
+                    old_path = os.path.join(root, name)
+                    new_path = os.path.join(root, name.replace(' ', '_'))
+                    if not os.path.exists(new_path):
+                        os.rename(old_path, new_path)
         "
 
-    - name: Auto Detect All Header Folders & Compile
+    - name: Case-Insensitive Linking
+      run: |
+        # Fallback alias for case sensitivity
+        for file in *; do
+          lower=$(echo "$file" | tr '[:upper:]' '[:lower:]')
+          if [ "$lower" = "drawim.mm" ] || [ "$lower" = "drawlm.mm" ]; then
+            cp -f "$file" DrawIm.mm 2>/dev/null || true
+            cp -f "$file" Drawlm.mm 2>/dev/null || true
+            cp -f "$file" Drawim.mm 2>/dev/null || true
+          fi
+          if [ "$lower" = "drawim.h" ] || [ "$lower" = "drawlm.h" ]; then
+            cp -f "$file" DrawIm.h 2>/dev/null || true
+            cp -f "$file" Drawlm.h 2>/dev/null || true
+            cp -f "$file" Drawim.h 2>/dev/null || true
+          fi
+        done
+
+    - name: Compile Tweak Package
       run: |
         export THEOS=~/theos
         
-        # Project ke har folder/subfolder ka path automatically dhoond kar -I flag banayega
-        INCLUDE_FLAGS=$(find . -type d ! -path '*/.*' -exec echo -n "-I{} " \;)
-        echo "Generated Include Flags: $INCLUDE_FLAGS"
-        
-        # Theos ko dynamically saare header paths aur C++ standard pass karein
+        # Collect include paths without spaces
+        INC_DIRS=$(find . -maxdepth 4 -type d ! -path '*/.*' ! -path './theos*' ! -path './packages*' | sed 's/^/-I/' | tr '\n' ' ')
+        echo "Include Dirs: $INC_DIRS"
+
         make package FINALPACKAGE=1 \
-          ADDITIONAL_CFLAGS="-fobjc-arc -w $INCLUDE_FLAGS" \
-          ADDITIONAL_CCFLAGS="-std=c++17 -stdlib=libc++ -Wno-c++11-extensions -Wno-everything $INCLUDE_FLAGS"
+          ADDITIONAL_CFLAGS="-fobjc-arc -w $INC_DIRS" \
+          ADDITIONAL_CCFLAGS="-std=c++17 -stdlib=libc++ -Wno-c++11-extensions -Wno-everything $INC_DIRS"
 
     - name: Upload Compiled Artifact (.deb / .dylib)
       uses: actions/upload-artifact@v4
@@ -72,3 +101,4 @@ jobs:
         path: |
           packages/*.deb
           **/*.deb
+          **/*.dylib
