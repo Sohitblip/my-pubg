@@ -97,6 +97,9 @@ jobs:
         find . -type f \( -name "*.m" -o -name "*.mm" \) -exec sed -i '' 's/AddConvexPolyFilled(vec, 3 , \[self getImU32/AddConvexPolyFilled(vec, 3, vec, 3, \[self getImU32/g' {} +
         find . -type f \( -name "*.m" -o -name "*.mm" \) -exec sed -i '' 's/AddConvexPolyFilled(vec, 3, \[self getImU32/AddConvexPolyFilled(vec, 3, vec, 3, \[self getImU32/g' {} +
 
+        # Fix GuiRenderer hasActionTouch typo
+        find . -type f -name "GuiRenderer.mm" -exec sed -i '' 's/hasActionTouch = YES;/hasActiveTouch = YES;/g' {} +
+
     - name: Compile Dylib Only
       run: |
         export THEOS=~/theos
