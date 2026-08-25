@@ -1,11 +1,11 @@
 name: Build iOS Tweak
 
 on:
-  workflow_dispatch: # Isse aap manually button daba kar build chalu kar sakte hain
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest # macOS par compiler sabse tez chalta hai
+    runs-on: macos-latest
 
     steps:
     - name: Checkout Repository
@@ -27,7 +27,6 @@ jobs:
     - name: Unzip Project Files
       run: |
         unzip Drawdylib.zip -d ./project_extracted
-        # Agar zip ke andar direct files hain to unhe root me le aane ke liye:
         if [ -d "./project_extracted/Drawdylib" ]; then
           mv ./project_extracted/Drawdylib/* .
         else
@@ -40,7 +39,7 @@ jobs:
         make package FINALPACKAGE=1
 
     - name: Upload Compiled Artifact (.deb / .dylib)
-      uses: actions/artifacts@v3
+      uses: actions/upload-artifact@v3
       with:
         name: OsirisDrawESP-Build
         path: packages/*.deb
