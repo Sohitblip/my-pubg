@@ -61,42 +61,43 @@ jobs:
                         os.rename(old_path, new_path)
         "
 
-    - name: Fix Source Files and Objective-C++ Syntax
+    - name: Clean Duplicates & Fix Code
       run: |
-        # Case mismatch handling
-        for file in *; do
-          lower=$(echo "$file" | tr '[:upper:]' '[:lower:]')
-          if [ "$lower" = "drawim.mm" ] || [ "$lower" = "drawlm.mm" ]; then
-            cp -f "$file" DrawIm.mm 2>/dev/null || true
-            cp -f "$file" Drawlm.mm 2>/dev/null || true
-            cp -f "$file" Drawim.mm 2>/dev/null || true
-          fi
-          if [ "$lower" = "drawim.h" ] || [ "$lower" = "drawlm.h" ]; then
-            cp -f "$file" DrawIm.h 2>/dev/null || true
-            cp -f "$file" Drawlm.h 2>/dev/null || true
-            cp -f "$file" Drawim.h 2>/dev/null || true
-          fi
-        done
+        python3 -c "
+        import os
 
-        # autofire stub
-        if [ -f "autofire.mm" ]; then
-          echo "// Auto-generated safe dummy by CI" > autofire.mm
-          echo "#import <Foundation/Foundation.h>" >> autofire.mm
-          echo "void autoFireStub() {}" >> autofire.mm
-        fi
+        # 1. Deduplicate files (e.g. root vs subfolder or DrawIm vs Drawlm)
+        seen_files = set()
+        for root, dirs, files in os.walk('.'):
+            if any(p in root for p in ['.git', '.theos', 'packages', 'sdks-master']):
+                continue
+            for f in files:
+                if f.endswith(('.m', '.mm', '.cpp')):
+                    lower_name = f.lower()
+                    full_path = os.path.join(root, f)
+                    if lower_name in seen_files:
+                        print(f'Removing duplicate: {full_path}')
+                        os.remove(full_path)
+                    else:
+                        seen_files.add(lower_name)
 
-        # Objective-C++ typeof syntax fix across all pool and source files
+        # 2. Stub autofire if present
+        if os.path.exists('autofire.mm'):
+            with open('autofire.mm', 'w') as af:
+                af.write('#import <Foundation/Foundation.h>\nvoid autoFireStub() {}\n')
+        "
+
+        # Syntax fix for C++17 typeof keyword
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/typeof(self)/__typeof__(self)/g' {} +
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/__weak typeof/__weak __typeof__/g' {} +
 
-    - name: Compile Tweak Package with Required Sources
+    - name: Compile Tweak Package
       run: |
         export THEOS=~/theos
         
-        # Include directories collect karna
         INC_DIRS=$(find . -maxdepth 4 -type d ! -path '*/.*' ! -path './theos*' ! -path './packages*' | sed 's/^/-I/' | tr '\n' ' ')
         
-        # Sources collect karein
+        # Collect uniquely preserved sources (excluding problematic modules)
         SOURCES=$(find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.cpp" \) \
           ! -path '*/.*' \
           ! -path './theos*' \
@@ -105,7 +106,7 @@ jobs:
           ! -path './AEScript*' \
           ! -path './Host*' \
           ! -path './Hosts*' | tr '\n' ' ')
-        echo "Compiling Sources: $SOURCES"
+        echo "Final Sources to Compile: $SOURCES"
 
         make package FINALPACKAGE=1 \
           OsirisDrawESP_FILES="$SOURCES" \
