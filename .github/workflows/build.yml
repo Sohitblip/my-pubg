@@ -22,17 +22,18 @@ jobs:
         mkdir -p ~/theos/sdks
         curl -LO https://github.com/theos/sdks/archive/refs/heads/master.zip
         unzip -q master.zip
-        mv sdks-master/* ~/theos/sdks/
+        cp -R sdks-master/* ~/theos/sdks/
         rm -rf master.zip sdks-master
 
     - name: Unzip Project Files
       run: |
-        unzip Drawdylib.zip -d ./project_extracted
+        unzip -q Drawdylib.zip -d ./project_extracted
         if [ -d "./project_extracted/Drawdylib" ]; then
-          mv ./project_extracted/Drawdylib/* .
+          cp -R ./project_extracted/Drawdylib/* .
         else
-          mv ./project_extracted/* .
+          cp -R ./project_extracted/* .
         fi
+        rm -rf ./project_extracted
 
     - name: Compile Tweak Package
       run: |
