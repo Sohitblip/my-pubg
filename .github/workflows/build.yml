@@ -62,11 +62,12 @@ jobs:
                         os.rename(old_path, new_path)
         "
 
-    - name: Clean Duplicates & Fix Code
+    - name: Clean Duplicates, Fix Syntax & Generate Plist
       run: |
         python3 -c "
         import os
 
+        # Duplicate source cleanup
         seen_files = set()
         for root, dirs, files in os.walk('.'):
             if any(p in root for p in ['.git', '.theos', 'packages', 'sdks-master']):
@@ -81,13 +82,29 @@ jobs:
                     else:
                         seen_files.add(lower_name)
 
+        # Stub autofire if present
         if os.path.exists('autofire.mm'):
             with open('autofire.mm', 'w') as af:
                 af.write('#import <Foundation/Foundation.h>\nvoid autoFireStub() {}\n')
         "
 
+        # C++17 typeof conversion
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/typeof(self)/__typeof__(self)/g' {} +
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/__weak typeof/__weak __typeof__/g' {} +
+
+        # Generate target bundle filter plist
+        cat << 'EOF' > OsirisDrawESP.plist
+        {
+            Filter = {
+                Bundles = (
+                    "com.tencent.ig",
+                    "com.pubg.krmobile",
+                    "com.vng.pubgmobile",
+                    "com.rexx.pubgmobile"
+                );
+            };
+        }
+        EOF
 
     - name: Compile Tweak Package
       run: |
