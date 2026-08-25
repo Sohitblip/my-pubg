@@ -24,7 +24,7 @@ jobs:
         cp -R sdks-master/* ~/theos/sdks/
         rm -rf master.zip sdks-master
 
-    - name: Unzip and Flatten Project Files
+    - name: Extract and Flatten All Project Files
       run: |
         python3 -c "
         import zipfile, os, shutil
@@ -32,30 +32,47 @@ jobs:
         with zipfile.ZipFile('Drawdylib.zip', 'r') as zip_ref:
             zip_ref.extractall('temp_extract')
         
+        # Makefile ka actual folder locate karo
         src_dir = 'temp_extract'
-        if os.path.exists('temp_extract/Drawdylib'):
-            src_dir = 'temp_extract/Drawdylib'
-            
+        for root, dirs, files in os.walk('temp_extract'):
+            if 'Makefile' in files:
+                src_dir = root
+                break
+                
+        # Saari files/folders ko root level par transfer karo
         for item in os.listdir(src_dir):
             s = os.path.join(src_dir, item)
             d = os.path.join('.', item)
-            if os.path.exists(d):
+            if os.path.exists(d) and os.path.abspath(s) != os.path.abspath(d):
                 if os.path.isdir(d):
                     shutil.rmtree(d)
                 else:
                     os.remove(d)
-            shutil.move(s, d)
+            if os.path.abspath(s) != os.path.abspath(d):
+                shutil.move(s, d)
             
-        # Automatically fix filename casing for Theos compilation
-        for root, dirs, files in os.walk('.'):
-            for f in files:
-                if f.lower() == 'drawim.mm':
-                    os.rename(os.path.join(root, f), os.path.join(root, 'Drawim.mm'))
-                elif f.lower() == 'drawim.h':
-                    os.rename(os.path.join(root, f), os.path.join(root, 'Drawim.h'))
-                    
-        shutil.rmtree('temp_extract')
+        shutil.rmtree('temp_extract', ignore_errors=True)
         "
+
+    - name: Verify and Align File Names
+      run: |
+        echo "=== Root Directory Listing ==="
+        ls -la
+        # Filename case differences handle karne ke liye safety sync
+        for ext in mm h cpp; do
+          for f in $(find . -maxdepth 1 -name "*.$ext" -o -name "*.${ext^^}"); do
+            base=$(basename "$f")
+            lower=$(echo "$base" | tr '[:upper:]' '[:lower:]')
+            if [ "$lower" = "drawim.mm" ]; then
+              cp -f "$f" ./DrawIm.mm
+              cp -f "$f" ./Drawim.mm
+            fi
+            if [ "$lower" = "drawim.h" ]; then
+              cp -f "$f" ./DrawIm.h
+              cp -f "$f" ./Drawim.h
+            fi
+          done
+        done
 
     - name: Compile Tweak Package
       run: |
