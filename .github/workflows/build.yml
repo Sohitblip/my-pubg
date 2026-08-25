@@ -100,6 +100,25 @@ jobs:
         # Fix GuiRenderer hasActionTouch typo
         find . -type f -name "GuiRenderer.mm" -exec sed -i '' 's/hasActionTouch = YES;/hasActiveTouch = YES;/g' {} +
 
+        # Clean duplicate getUEString/GetFName functions in Drawzb.mm if any
+        python3 -c "
+        import os
+        for root, dirs, files in os.walk('.'):
+            for f in files:
+                if f == 'Drawzb.mm':
+                    path = os.path.join(root, f)
+                    with open(path, 'r', encoding='utf-8', errors='ignore') as file:
+                        content = file.read()
+                    
+                    # Keep only first occurrence of getUEString
+                    if content.count('string getUEString(kaddr address)') > 1:
+                        parts = content.split('string getUEString(kaddr address)')
+                        content = parts[0] + 'string getUEString(kaddr address)' + parts[1]
+                    
+                    with open(path, 'w', encoding='utf-8') as file:
+                        file.write(content)
+        "
+
     - name: Compile Dylib Only
       run: |
         export THEOS=~/theos
