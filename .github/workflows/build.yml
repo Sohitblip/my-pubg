@@ -86,7 +86,10 @@ jobs:
                 af.write('#import <Foundation/Foundation.h>\nvoid autoFireStub() {}\n')
         "
 
-        # Fix C++17 typeof
+        # Fix typedef conflict between Offset.h and JFCommon.h
+        find . -type f -name "Offset.h" -exec sed -i '' 's/typedef uintptr_t kaddr;/typedef long kaddr;/g' {} +
+
+        # Fix C++17 typeof syntax
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/typeof(self)/__typeof__(self)/g' {} +
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/__weak typeof/__weak __typeof__/g' {} +
 
