@@ -85,20 +85,20 @@ jobs:
           echo "void autoFireStub() {}" >> autofire.mm
         fi
 
-    - name: Compile Tweak Package with All Sources
+    - name: Compile Tweak Package with Required Sources
       run: |
         export THEOS=~/theos
         
-        # Include directories collect karna
+        # Include directories
         INC_DIRS=$(find . -maxdepth 4 -type d ! -path '*/.*' ! -path './theos*' ! -path './packages*' | sed 's/^/-I/' | tr '\n' ' ')
         
-        # Project ki saari source files (.m, .mm, .cpp) collect karna
-        ALL_SOURCES=$(find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.cpp" \) ! -path '*/.*' ! -path './theos*' ! -path './packages*' | tr '\n' ' ')
-        echo "Found Sources: $ALL_SOURCES"
+        # Sirf zaroori source files collect karein (AEScrypt ko exclude kar diya)
+        SOURCES=$(find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.cpp" \) ! -path '*/.*' ! -path './theos*' ! -path './packages*' ! -path './AEScrypt*' ! -path './AEScript*' | tr '\n' ' ')
+        echo "Compiling Sources: $SOURCES"
 
         make package FINALPACKAGE=1 \
-          OsirisDrawESP_FILES="$ALL_SOURCES" \
-          ADDITIONAL_CFLAGS="-fobjc-arc -w $INC_DIRS" \
+          OsirisDrawESP_FILES="$SOURCES" \
+          ADDITIONAL_CFLAGS="-fobjc-arc -w -Wno-everything $INC_DIRS" \
           ADDITIONAL_CCFLAGS="-std=c++17 -stdlib=libc++ -Wno-c++11-extensions -Wno-everything $INC_DIRS"
 
     - name: Upload Compiled Artifact (.deb / .dylib)
