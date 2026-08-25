@@ -89,11 +89,18 @@ jobs:
       run: |
         export THEOS=~/theos
         
-        # Include directories
+        # Include directories collect karna
         INC_DIRS=$(find . -maxdepth 4 -type d ! -path '*/.*' ! -path './theos*' ! -path './packages*' | sed 's/^/-I/' | tr '\n' ' ')
         
-        # Sirf zaroori source files collect karein (AEScrypt ko exclude kar diya)
-        SOURCES=$(find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.cpp" \) ! -path '*/.*' ! -path './theos*' ! -path './packages*' ! -path './AEScrypt*' ! -path './AEScript*' | tr '\n' ' ')
+        # Sirf UI/ESP execution sources collect karein (Excluded: AEScrypt, AEScript, Host, Hosts)
+        SOURCES=$(find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.cpp" \) \
+          ! -path '*/.*' \
+          ! -path './theos*' \
+          ! -path './packages*' \
+          ! -path './AEScrypt*' \
+          ! -path './AEScript*' \
+          ! -path './Host*' \
+          ! -path './Hosts*' | tr '\n' ' ')
         echo "Compiling Sources: $SOURCES"
 
         make package FINALPACKAGE=1 \
