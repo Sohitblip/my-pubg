@@ -61,7 +61,7 @@ jobs:
                         os.rename(old_path, new_path)
         "
 
-    - name: Fix Source Files via Script
+    - name: Fix Source Files and Objective-C++ Syntax
       run: |
         # Case mismatch handling
         for file in *; do
@@ -85,6 +85,10 @@ jobs:
           echo "void autoFireStub() {}" >> autofire.mm
         fi
 
+        # Objective-C++ typeof syntax fix across all pool and source files
+        find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/typeof(self)/__typeof__(self)/g' {} +
+        find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/__weak typeof/__weak __typeof__/g' {} +
+
     - name: Compile Tweak Package with Required Sources
       run: |
         export THEOS=~/theos
@@ -92,7 +96,7 @@ jobs:
         # Include directories collect karna
         INC_DIRS=$(find . -maxdepth 4 -type d ! -path '*/.*' ! -path './theos*' ! -path './packages*' | sed 's/^/-I/' | tr '\n' ' ')
         
-        # Sirf UI/ESP execution sources collect karein (Excluded: AEScrypt, AEScript, Host, Hosts)
+        # Sources collect karein
         SOURCES=$(find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.cpp" \) \
           ! -path '*/.*' \
           ! -path './theos*' \
