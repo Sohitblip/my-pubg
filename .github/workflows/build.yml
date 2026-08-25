@@ -29,11 +29,9 @@ jobs:
         python3 -c "
         import zipfile, os, shutil
 
-        # 1. Extract zip to temp folder
         with zipfile.ZipFile('Drawdylib.zip', 'r') as zip_ref:
             zip_ref.extractall('extracted_temp')
 
-        # 2. Locate folder containing Makefile
         target_dir = 'extracted_temp'
         for root, dirs, files in os.walk('extracted_temp'):
             for f in files:
@@ -41,7 +39,6 @@ jobs:
                     target_dir = root
                     break
 
-        # 3. Move everything to workspace root
         for item in os.listdir(target_dir):
             s = os.path.join(target_dir, item)
             d = os.path.join('.', item)
@@ -55,26 +52,18 @@ jobs:
         shutil.rmtree('extracted_temp', ignore_errors=True)
         "
 
-    - name: Normalize Source Filenames
-      run: |
-        # Ensure exact filename matching for case-sensitive compilers
-        for file in *; do
-          lower=$(echo "$file" | tr '[:upper:]' '[:lower:]')
-          if [ "$lower" = "drawim.mm" ]; then
-            cp -f "$file" DrawIm.mm
-            cp -f "$file" Drawim.mm
-          elif [ "$lower" = "drawim.h" ]; then
-            cp -f "$file" DrawIm.h
-            cp -f "$file" Drawim.h
-          fi
-        done
-        echo "=== Files Ready for Compilation ==="
-        ls -la
-
-    - name: Compile Tweak Package
+    - name: Auto Detect All Header Folders & Compile
       run: |
         export THEOS=~/theos
-        make package FINALPACKAGE=1
+        
+        # Project ke har folder/subfolder ka path automatically dhoond kar -I flag banayega
+        INCLUDE_FLAGS=$(find . -type d ! -path '*/.*' -exec echo -n "-I{} " \;)
+        echo "Generated Include Flags: $INCLUDE_FLAGS"
+        
+        # Theos ko dynamically saare header paths aur C++ standard pass karein
+        make package FINALPACKAGE=1 \
+          ADDITIONAL_CFLAGS="-fobjc-arc -w $INCLUDE_FLAGS" \
+          ADDITIONAL_CCFLAGS="-std=c++17 -stdlib=libc++ -Wno-c++11-extensions -Wno-everything $INCLUDE_FLAGS"
 
     - name: Upload Compiled Artifact (.deb / .dylib)
       uses: actions/upload-artifact@v4
