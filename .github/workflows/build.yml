@@ -100,7 +100,7 @@ jobs:
         # Fix GuiRenderer hasActionTouch typo
         find . -type f -name "GuiRenderer.mm" -exec sed -i '' 's/hasActionTouch = YES;/hasActiveTouch = YES;/g' {} +
 
-        # Clean duplicate getUEString/GetFName functions in Drawzb.mm if any
+        # Safe duplicate removal for Drawzb.mm using clean line parsing
         python3 -c "
         import os
         for root, dirs, files in os.walk('.'):
@@ -108,15 +108,30 @@ jobs:
                 if f == 'Drawzb.mm':
                     path = os.path.join(root, f)
                     with open(path, 'r', encoding='utf-8', errors='ignore') as file:
-                        content = file.read()
+                        lines = file.readlines()
                     
-                    # Keep only first occurrence of getUEString
-                    if content.count('string getUEString(kaddr address)') > 1:
-                        parts = content.split('string getUEString(kaddr address)')
-                        content = parts[0] + 'string getUEString(kaddr address)' + parts[1]
+                    new_lines = []
+                    seen_funcs = set()
+                    skip_mode = False
+                    
+                    for line in lines:
+                        if 'string getUEString(kaddr address)' in line or 'string GetFName(kaddr actorAddress)' in line:
+                            func_name = line.strip()
+                            if func_name in seen_funcs:
+                                skip_mode = True
+                            else:
+                                seen_funcs.add(func_name)
+                                skip_mode = False
+                        
+                        if skip_mode:
+                            if line.strip() == '}':
+                                skip_mode = False
+                            continue
+                        
+                        new_lines.append(line)
                     
                     with open(path, 'w', encoding='utf-8') as file:
-                        file.write(content)
+                        file.writelines(new_lines)
         "
 
     - name: Compile Dylib Only
