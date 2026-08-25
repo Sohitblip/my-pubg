@@ -15,7 +15,7 @@ jobs:
       run: |
         git clone --recursive https://github.com/theos/theos.git ~/theos
         echo "THEOS=~/theos" >> $GITHUB_ENV
-        
+
     - name: Setup iOS SDK
       run: |
         mkdir -p ~/theos/sdks
@@ -24,55 +24,52 @@ jobs:
         cp -R sdks-master/* ~/theos/sdks/
         rm -rf master.zip sdks-master
 
-    - name: Extract and Flatten All Project Files
+    - name: Auto Extract and Flatten Zip
       run: |
         python3 -c "
         import zipfile, os, shutil
-        
+
+        # 1. Extract zip to temp folder
         with zipfile.ZipFile('Drawdylib.zip', 'r') as zip_ref:
-            zip_ref.extractall('temp_extract')
-        
-        # Makefile ka actual folder locate karo
-        src_dir = 'temp_extract'
-        for root, dirs, files in os.walk('temp_extract'):
-            if 'Makefile' in files:
-                src_dir = root
-                break
-                
-        # Saari files/folders ko root level par transfer karo
-        for item in os.listdir(src_dir):
-            s = os.path.join(src_dir, item)
+            zip_ref.extractall('extracted_temp')
+
+        # 2. Locate folder containing Makefile
+        target_dir = 'extracted_temp'
+        for root, dirs, files in os.walk('extracted_temp'):
+            for f in files:
+                if f.lower() == 'makefile':
+                    target_dir = root
+                    break
+
+        # 3. Move everything to workspace root
+        for item in os.listdir(target_dir):
+            s = os.path.join(target_dir, item)
             d = os.path.join('.', item)
-            if os.path.exists(d) and os.path.abspath(s) != os.path.abspath(d):
+            if os.path.exists(d):
                 if os.path.isdir(d):
                     shutil.rmtree(d)
                 else:
                     os.remove(d)
-            if os.path.abspath(s) != os.path.abspath(d):
-                shutil.move(s, d)
-            
-        shutil.rmtree('temp_extract', ignore_errors=True)
+            shutil.move(s, d)
+
+        shutil.rmtree('extracted_temp', ignore_errors=True)
         "
 
-    - name: Verify and Align File Names
+    - name: Normalize Source Filenames
       run: |
-        echo "=== Root Directory Listing ==="
-        ls -la
-        # Filename case differences handle karne ke liye safety sync
-        for ext in mm h cpp; do
-          for f in $(find . -maxdepth 1 -name "*.$ext" -o -name "*.${ext^^}"); do
-            base=$(basename "$f")
-            lower=$(echo "$base" | tr '[:upper:]' '[:lower:]')
-            if [ "$lower" = "drawim.mm" ]; then
-              cp -f "$f" ./DrawIm.mm
-              cp -f "$f" ./Drawim.mm
-            fi
-            if [ "$lower" = "drawim.h" ]; then
-              cp -f "$f" ./DrawIm.h
-              cp -f "$f" ./Drawim.h
-            fi
-          done
+        # Ensure exact filename matching for case-sensitive compilers
+        for file in *; do
+          lower=$(echo "$file" | tr '[:upper:]' '[:lower:]')
+          if [ "$lower" = "drawim.mm" ]; then
+            cp -f "$file" DrawIm.mm
+            cp -f "$file" Drawim.mm
+          elif [ "$lower" = "drawim.h" ]; then
+            cp -f "$file" DrawIm.h
+            cp -f "$file" Drawim.h
+          fi
         done
+        echo "=== Files Ready for Compilation ==="
+        ls -la
 
     - name: Compile Tweak Package
       run: |
