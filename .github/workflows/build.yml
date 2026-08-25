@@ -1,0 +1,46 @@
+name: Build iOS Tweak
+
+on:
+  workflow_dispatch: # Isse aap manually button daba kar build chalu kar sakte hain
+
+jobs:
+  build:
+    runs-on: macos-latest # macOS par compiler sabse tez chalta hai
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Install Theos Framework & Dependencies
+      run: |
+        export THEOS=~/theos
+        bash -c "$(curl -fsSL https://githubusercontent.com)"
+        echo "THEOS=~/theos" >> $GITHUB_ENV
+        
+    - name: Setup iOS SDK
+      run: |
+        mkdir -p ~/theos/sdks
+        curl -LO https://github.com
+        tar -xf iPhoneOS14.5.sdk.tar.xz -C ~/theos/sdks/
+        rm iPhoneOS14.5.sdk.tar.xz
+
+    - name: Unzip Project Files
+      run: |
+        unzip Drawdylib.zip -d ./project_extracted
+        # Agar zip ke andar direct files hain to unhe root me le aane ke liye:
+        if [ -d "./project_extracted/Drawdylib" ]; then
+          mv ./project_extracted/Drawdylib/* .
+        else
+          mv ./project_extracted/* .
+        fi
+
+    - name: Compile Tweak Package
+      run: |
+        export THEOS=~/theos
+        make package FINALPACKAGE=1
+
+    - name: Upload Compiled Artifact (.deb / .dylib)
+      uses: actions/artifacts@v3
+      with:
+        name: OsirisDrawESP-Build
+        path: packages/*.deb
