@@ -11,8 +11,9 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Install Theos Framework
+    - name: Install Theos & ldid Tool
       run: |
+        brew install ldid
         git clone --recursive https://github.com/theos/theos.git ~/theos
         echo "THEOS=~/theos" >> $GITHUB_ENV
 
@@ -66,7 +67,6 @@ jobs:
         python3 -c "
         import os
 
-        # 1. Deduplicate files (e.g. root vs subfolder or DrawIm vs Drawlm)
         seen_files = set()
         for root, dirs, files in os.walk('.'):
             if any(p in root for p in ['.git', '.theos', 'packages', 'sdks-master']):
@@ -81,13 +81,11 @@ jobs:
                     else:
                         seen_files.add(lower_name)
 
-        # 2. Stub autofire if present
         if os.path.exists('autofire.mm'):
             with open('autofire.mm', 'w') as af:
                 af.write('#import <Foundation/Foundation.h>\nvoid autoFireStub() {}\n')
         "
 
-        # Syntax fix for C++17 typeof keyword
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/typeof(self)/__typeof__(self)/g' {} +
         find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.h" \) -exec sed -i '' 's/__weak typeof/__weak __typeof__/g' {} +
 
@@ -97,7 +95,6 @@ jobs:
         
         INC_DIRS=$(find . -maxdepth 4 -type d ! -path '*/.*' ! -path './theos*' ! -path './packages*' | sed 's/^/-I/' | tr '\n' ' ')
         
-        # Collect uniquely preserved sources (excluding problematic modules)
         SOURCES=$(find . -type f \( -name "*.m" -o -name "*.mm" -o -name "*.cpp" \) \
           ! -path '*/.*' \
           ! -path './theos*' \
