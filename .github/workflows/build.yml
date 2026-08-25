@@ -11,10 +11,9 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Install Theos Framework & Dependencies
+    - name: Install Theos Framework
       run: |
-        export THEOS=~/theos
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+        git clone --recursive https://github.com/theos/theos.git ~/theos
         echo "THEOS=~/theos" >> $GITHUB_ENV
         
     - name: Setup iOS SDK
